@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react'
-import { Shield, Users, FileText, Filter, Eye, CheckCircle, XCircle, Trash2, AlertTriangle } from 'lucide-react'
+import { Shield, Users, FileText, Filter, Eye, CheckCircle, XCircle, Trash2, AlertTriangle, Search } from 'lucide-react'
 import api from '../utils/api'
 
 function StatCard({ label, value, color }) {
   return (
     <div style={{
       background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
-      borderRadius: '10px', padding: '20px'
-    }}>
+      borderRadius: '12px', padding: '20px', transition: 'transform 0.2s'
+    }} className="hover:scale-[1.02]">
       <p style={{ fontSize: '0.75rem', fontWeight: '600', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>{label}</p>
-      <p style={{ fontSize: '2rem', fontWeight: '800', color: color || 'white', letterSpacing: '-0.02em' }}>{value}</p>
+      <p style={{ fontSize: '2rem', fontWeight: '800', color: color || 'white', letterSpacing: '-0.02em', lineHeight: '1' }}>{value}</p>
     </div>
   )
 }
@@ -20,6 +20,15 @@ function StatusBadge({ status }) {
   return <span className="badge badge-warning">Pending</span>
 }
 
+function AdminToast({ msg, type, onDismiss }) {
+  return (
+    <div className={`toast toast--${type}`}>
+      {type === 'success' ? <CheckCircle className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
+      <span style={{ fontSize: '0.875rem', fontWeight: '600' }}>{msg}</span>
+    </div>
+  )
+}
+
 export default function Admin() {
   const [items, setItems] = useState([])
   const [users, setUsers] = useState([])
@@ -27,6 +36,12 @@ export default function Admin() {
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('papers')
   const [stats, setStats] = useState({ totalPapers: 0, pending: 0, approved: 0, users: 0 })
+  const [toast, setToast] = useState(null)
+
+  const showToast = (msg, type = 'success') => {
+    setToast({ msg, type })
+    setTimeout(() => setToast(null), 3000)
+  }
 
   const loadPapers = async () => {
     setLoading(true)
@@ -65,8 +80,10 @@ export default function Admin() {
     try {
       const url = status === 'approved' ? `/api/admin/papers/${id}/approve` : `/api/admin/papers/${id}/reject`
       await api.put(url)
+      showToast(`Paper ${status === 'approved' ? 'approved' : 'rejected'} successfully`)
       await loadPapers()
     } catch (e) {
+      showToast('Failed to update status', 'error')
       console.error('Failed to update status:', e)
     }
   }
@@ -75,8 +92,10 @@ export default function Admin() {
     if (!window.confirm('Permanently delete this paper?')) return
     try {
       await api.delete(`/api/admin/papers/${id}`)
+      showToast('Paper deleted')
       await loadPapers()
     } catch (e) {
+      showToast('Deletion failed', 'error')
       console.error('Failed to delete paper:', e)
     }
   }
@@ -85,8 +104,10 @@ export default function Admin() {
     if (!window.confirm('Permanently delete this user?')) return
     try {
       await api.delete(`/api/auth/admin/users/${id}`)
+      showToast('User deleted')
       await loadUsers()
     } catch (e) {
+      showToast('Deletion failed', 'error')
       console.error('Failed to delete user:', e)
     }
   }
@@ -98,8 +119,10 @@ export default function Admin() {
 
   return (
     <div className="section-gap animate-fade-in">
+      {toast && <AdminToast msg={toast.msg} type={toast.type} onDismiss={() => setToast(null)} />}
+
       {/* Admin Header — dark identity */}
-      <div className="admin-header">
+      <div className="admin-header animate-slide-up">
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '24px' }}>
           <div style={{
             width: '44px', height: '44px', borderRadius: '10px',
@@ -128,15 +151,7 @@ export default function Admin() {
       </div>
 
       {/* Tabs */}
-      <div style={{
-        display: 'flex',
-        background: 'var(--color-surface)',
-        border: '1px solid var(--color-border)',
-        borderRadius: '10px',
-        padding: '4px',
-        gap: '4px',
-        maxWidth: '400px'
-      }}>
+      <div className="tab-bar animate-fade-in" style={{ maxWidth: '400px' }}>
         {[
           { key: 'papers', label: 'Paper Moderation', icon: FileText },
           { key: 'users', label: 'User Management', icon: Users }
@@ -144,14 +159,8 @@ export default function Admin() {
           <button
             key={key}
             onClick={() => setActiveTab(key)}
-            style={{
-              flex: 1, padding: '9px 16px', borderRadius: '8px',
-              fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer',
-              border: 'none', transition: 'all 0.15s ease',
-              background: activeTab === key ? '#0F172A' : 'transparent',
-              color: activeTab === key ? 'white' : 'var(--color-text-secondary)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-            }}
+            className={`tab-btn ${activeTab === key ? 'tab-btn--active' : 'tab-btn--inactive'}`}
+            style={activeTab === key ? { background: '#0F172A', color: 'white' } : {}}
           >
             <Icon className="w-4 h-4" />
             {label}
@@ -160,24 +169,28 @@ export default function Admin() {
       </div>
 
       {activeTab === 'papers' ? (
-        <>
+        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {/* Filter Bar */}
-          <div className="card" style={{ padding: '16px 20px', borderRadius: '10px' }}>
+          <div className="card" style={{ padding: '16px 20px', borderRadius: '12px' }}>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
               <div style={{ flex: 1 }}>
                 <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: 'var(--color-text-secondary)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   Min AI Score
                 </label>
-                <input
-                  className="glass-input"
-                  type="number"
-                  placeholder="e.g., 70"
-                  value={minScore}
-                  onChange={e => setMinScore(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && loadPapers()}
-                />
+                <div style={{ position: 'relative' }}>
+                  <Search className="w-4 h-4" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
+                  <input
+                    className="glass-input"
+                    type="number"
+                    placeholder="e.g., 70"
+                    style={{ paddingLeft: '38px' }}
+                    value={minScore}
+                    onChange={e => setMinScore(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && loadPapers()}
+                  />
+                </div>
               </div>
-              <button className="btn-primary" onClick={loadPapers} disabled={loading} style={{ borderRadius: '8px', flexShrink: 0 }}>
+              <button className="btn-primary" onClick={loadPapers} disabled={loading} style={{ height: '42px' }}>
                 <Filter className="w-4 h-4" />
                 Filter
               </button>
@@ -192,12 +205,12 @@ export default function Admin() {
           ) : items.length === 0 ? (
             <div className="card empty-state">
               <FileText className="empty-state-icon" />
-              <p style={{ fontWeight: '600', color: 'var(--color-text)' }}>No papers found</p>
+              <p style={{ fontWeight: '700', color: 'var(--color-text)' }}>No papers found</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {items.map(i => (
-                <div key={i._id} className="card" style={{ padding: '20px', borderRadius: '12px' }}>
+                <div key={i._id} className="card" style={{ padding: '20px', borderRadius: '12px', borderLeft: i.status === 'pending' ? '4px solid var(--color-warning)' : '1px solid var(--color-border)' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
                     {/* Icon */}
                     <div style={{
@@ -217,7 +230,7 @@ export default function Admin() {
                         <StatusBadge status={i.status} />
                         {i.aiScore != null && (
                           <span style={{
-                            fontSize: '0.75rem', fontWeight: '700', padding: '2px 10px', borderRadius: '9999px',
+                            fontSize: '0.75rem', fontWeight: '700', padding: '3px 10px', borderRadius: '9999px',
                             background: Number(i.aiScore) >= 70 ? 'var(--color-success-bg)' : Number(i.aiScore) >= 40 ? 'var(--color-warning-bg)' : 'var(--color-danger-bg)',
                             color: Number(i.aiScore) >= 70 ? 'var(--color-success)' : Number(i.aiScore) >= 40 ? '#92400E' : 'var(--color-danger)',
                             border: `1px solid ${Number(i.aiScore) >= 70 ? '#BBF7D0' : Number(i.aiScore) >= 40 ? '#FDE68A' : '#FECACA'}`
@@ -230,7 +243,7 @@ export default function Admin() {
                         {i.department} · {i.university || 'No university'}
                       </p>
                       <p style={{ fontSize: '0.75rem', color: '#94A3B8' }}>
-                        Uploaded by {i.uploadedBy?.name || 'Unknown'}
+                        Uploaded by <strong style={{ color: 'var(--color-text-secondary)' }}>{i.uploadedBy?.name || 'Unknown'}</strong>
                       </p>
                     </div>
                   </div>
@@ -244,7 +257,7 @@ export default function Admin() {
                     <a
                       href={i.fileUrl} target="_blank" rel="noreferrer"
                       className="btn-secondary"
-                      style={{ textDecoration: 'none', padding: '7px 14px', fontSize: '0.8125rem', borderRadius: '8px' }}
+                      style={{ textDecoration: 'none', padding: '7px 14px', fontSize: '0.8125rem', borderRadius: '8px', height: '34px' }}
                     >
                       <Eye className="w-3.5 h-3.5" />
                       Preview
@@ -252,7 +265,7 @@ export default function Admin() {
                     {i.status !== 'approved' && (
                       <button
                         className="btn-success"
-                        style={{ padding: '7px 14px', fontSize: '0.8125rem', borderRadius: '8px' }}
+                        style={{ padding: '7px 14px', fontSize: '0.8125rem', borderRadius: '8px', height: '34px' }}
                         onClick={() => setStatus(i._id, 'approved')}
                       >
                         <CheckCircle className="w-3.5 h-3.5" />
@@ -262,7 +275,7 @@ export default function Admin() {
                     {i.status !== 'rejected' && (
                       <button
                         className="btn-warning"
-                        style={{ padding: '7px 14px', fontSize: '0.8125rem', borderRadius: '8px' }}
+                        style={{ padding: '7px 14px', fontSize: '0.8125rem', borderRadius: '8px', height: '34px' }}
                         onClick={() => setStatus(i._id, 'rejected')}
                       >
                         <XCircle className="w-3.5 h-3.5" />
@@ -271,7 +284,7 @@ export default function Admin() {
                     )}
                     <button
                       className="btn-danger"
-                      style={{ padding: '7px 14px', fontSize: '0.8125rem', borderRadius: '8px', marginLeft: 'auto' }}
+                      style={{ padding: '7px 14px', fontSize: '0.8125rem', borderRadius: '8px', marginLeft: 'auto', height: '34px' }}
                       onClick={() => deletePaper(i._id)}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -282,77 +295,76 @@ export default function Admin() {
               ))}
             </div>
           )}
-        </>
+        </div>
       ) : (
         /* Users Table */
-        <div className="card" style={{ borderRadius: '12px', overflow: 'hidden', padding: 0 }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="card animate-fade-in" style={{ borderRadius: '16px', overflow: 'hidden', padding: 0 }}>
+          <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h2 className="section-title">Registered Users</h2>
             {users.length > 0 && <span className="badge badge-neutral">{users.length} users</span>}
           </div>
           {loading ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '64px' }}>
               <div className="spinner" />
             </div>
           ) : (
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>User</th>
-                  <th>Role</th>
-                  <th>Joined</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map(u => (
-                  <tr key={u._id}>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{
-                          width: '36px', height: '36px', borderRadius: '50%',
-                          background: u.role === 'admin' ? '#0F172A' : 'var(--color-primary)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          color: 'white', fontWeight: '700', fontSize: '0.875rem', flexShrink: 0
-                        }}>
-                          {u.name?.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <div style={{ fontWeight: '600', color: 'var(--color-text)' }}>{u.name}</div>
-                          <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>{u.email}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`badge ${u.role === 'admin' ? 'badge-neutral' : 'badge-primary'}`}
-                        style={u.role === 'admin' ? { background: '#F1F5F9', color: '#0F172A' } : {}}>
-                        {u.role}
-                      </span>
-                    </td>
-                    <td style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>
-                      {new Date(u.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <button
-                        onClick={() => deleteUser(u._id)}
-                        disabled={u.role === 'admin'}
-                        style={{
-                          padding: '6px 12px', borderRadius: '8px', border: 'none', cursor: u.role === 'admin' ? 'not-allowed' : 'pointer',
-                          background: u.role === 'admin' ? 'transparent' : 'var(--color-danger-bg)',
-                          color: u.role === 'admin' ? '#CBD5E1' : 'var(--color-danger)',
-                          opacity: u.role === 'admin' ? 0.4 : 1,
-                          display: 'inline-flex', alignItems: 'center', gap: '6px',
-                          fontWeight: '600', fontSize: '0.8125rem'
-                        }}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        Delete
-                      </button>
-                    </td>
+            <div style={{ overflowX: 'auto' }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th style={{ paddingLeft: '24px' }}>User</th>
+                    <th>Role</th>
+                    <th>Joined</th>
+                    <th style={{ textAlign: 'right', paddingRight: '24px' }}>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {users.map(u => (
+                    <tr key={u._id}>
+                      <td style={{ paddingLeft: '24px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{
+                            width: '36px', height: '36px', borderRadius: '50%',
+                            background: u.role === 'admin' ? '#0F172A' : 'var(--color-primary)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: 'white', fontWeight: '700', fontSize: '0.875rem', flexShrink: 0
+                          }}>
+                            {u.name?.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: '600', color: 'var(--color-text)' }}>{u.name}</div>
+                            <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>{u.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`badge ${u.role === 'admin' ? 'badge-neutral' : 'badge-primary'}`}
+                          style={u.role === 'admin' ? { background: '#F1F5F9', color: '#0F172A' } : {}}>
+                          {u.role}
+                        </span>
+                      </td>
+                      <td style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>
+                        {new Date(u.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </td>
+                      <td style={{ textAlign: 'right', paddingRight: '24px' }}>
+                        <button
+                          onClick={() => deleteUser(u._id)}
+                          disabled={u.role === 'admin'}
+                          className="btn-danger"
+                          style={{
+                            padding: '6px 12px', height: '32px',
+                            cursor: u.role === 'admin' ? 'not-allowed' : 'pointer'
+                          }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
           {users.length === 0 && !loading && (
             <div className="empty-state">

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { BookOpen, Filter, Download, Eye, Search, User as UserIcon, FileText, Star } from 'lucide-react'
+import { useEffect, useState, useCallback } from 'react'
+import { BookOpen, Filter, Download, Eye, Search, User as UserIcon, FileText, Star, X, ChevronDown, LayoutGrid, List } from 'lucide-react'
 import api from '../utils/api'
 import PdfPreview from '../components/PdfPreview'
 import { downloadFile } from '../utils/download'
@@ -30,9 +30,33 @@ function AiScoreBadge({ score }) {
   )
 }
 
+function PaperCardSkeleton() {
+  return (
+    <div className="skeleton-card">
+      <div style={{ display: 'flex', gap: '16px' }}>
+        <div className="skeleton" style={{ width: '48px', height: '48px', borderRadius: '10px', flexShrink: 0 }}></div>
+        <div style={{ flex: 1 }}>
+          <div className="skeleton" style={{ height: '18px', width: '60%', marginBottom: '10px' }}></div>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
+            <div className="skeleton" style={{ height: '24px', width: '100px', borderRadius: '9999px' }}></div>
+            <div className="skeleton" style={{ height: '24px', width: '60px', borderRadius: '9999px' }}></div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="skeleton" style={{ height: '14px', width: '30%' }}></div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <div className="skeleton" style={{ height: '32px', width: '80px', borderRadius: '8px' }}></div>
+              <div className="skeleton" style={{ height: '32px', width: '80px', borderRadius: '8px' }}></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function PaperCard({ paper, onView, onDownload }) {
   return (
-    <div className="card" style={{ padding: '20px', cursor: 'pointer', borderRadius: '12px' }} onClick={() => onView(paper)}>
+    <div className="card-interactive" style={{ padding: '20px', borderRadius: '12px', background: 'var(--color-surface)' }} onClick={() => onView(paper)}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
         {/* Icon */}
         <div style={{
@@ -71,20 +95,20 @@ function PaperCard({ paper, onView, onDownload }) {
             </div>
             <div style={{ display: 'flex', gap: '8px' }} onClick={e => e.stopPropagation()}>
               <button
-                className="btn-primary"
-                style={{ padding: '6px 14px', fontSize: '0.8125rem', borderRadius: '8px' }}
+                className="btn-secondary"
+                style={{ padding: '6px 12px', fontSize: '0.8125rem', height: '32px' }}
                 onClick={() => onView(paper)}
               >
                 <Eye className="w-3.5 h-3.5" />
                 View
               </button>
               <button
-                className="btn-secondary"
-                style={{ padding: '6px 14px', fontSize: '0.8125rem', borderRadius: '8px' }}
+                className="btn-primary"
+                style={{ padding: '6px 12px', fontSize: '0.8125rem', height: '32px' }}
                 onClick={() => onDownload(paper)}
               >
                 <Download className="w-3.5 h-3.5" />
-                Download
+                Get
               </button>
             </div>
           </div>
@@ -99,14 +123,16 @@ export default function Papers() {
   const [q, setQ] = useState({ subject: '', department: '', year: '', sort: 'new' })
   const [loading, setLoading] = useState(false)
   const [selectedPaper, setSelectedPaper] = useState(null)
+  const [filterOpen, setFilterOpen] = useState(true)
 
-  const load = async () => {
+  const load = async (queryObj = q) => {
     setLoading(true)
     const params = new URLSearchParams()
-    if (q.subject) params.set('subject', q.subject)
-    if (q.department) params.set('department', q.department)
-    if (q.year) params.set('year', q.year)
-    if (q.sort === 'downloads') params.set('sort', 'downloads')
+    if (queryObj.subject) params.set('subject', queryObj.subject)
+    if (queryObj.department) params.set('department', queryObj.department)
+    if (queryObj.year) params.set('year', queryObj.year)
+    if (queryObj.sort === 'downloads') params.set('sort', 'downloads')
+
     try {
       const { data } = await api.get('/api/papers?' + params.toString())
       setItems(data)
@@ -117,124 +143,183 @@ export default function Papers() {
     }
   }
 
-  useEffect(() => { load() }, [])
+  // Debounced load
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      load()
+    }, 300)
+    return () => clearTimeout(timeout)
+  }, [q.subject, q.department, q.year, q.sort])
 
   const handleDownload = async (paper) => {
     await downloadFile(paper.fileUrl, `${paper.subject}.pdf`, paper._id)
     load()
   }
 
+  const clearFilters = () => {
+    setQ({ subject: '', department: '', year: '', sort: 'new' })
+  }
+
+  const hasActiveFilters = q.subject || q.department || q.year || q.sort !== 'new'
+
   return (
     <div className="section-gap animate-fade-in">
-      {/* Hero */}
-      <div className="hero-section">
-        <div style={{ maxWidth: '640px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+      {/* Hero Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '24px', flexWrap: 'wrap' }}>
+        <div style={{ maxWidth: '600px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
             <div style={{
-              width: '44px', height: '44px', borderRadius: '10px',
+              width: '40px', height: '40px', borderRadius: '10px',
               background: 'var(--color-primary)',
               display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}>
-              <BookOpen className="w-6 h-6 text-white" />
+              <BookOpen className="w-5 h-5 text-white" />
             </div>
-            <h1 style={{ fontSize: '1.875rem', fontWeight: '800', color: 'var(--color-text)', letterSpacing: '-0.02em' }}>
+            <h1 style={{ fontSize: '1.75rem', fontWeight: '800', color: 'var(--color-text)', letterSpacing: '-0.02em' }}>
               Browse Papers
             </h1>
           </div>
-          <p style={{ fontSize: '1.0625rem', color: 'var(--color-text-secondary)', lineHeight: '1.6' }}>
-            Discover past year question papers shared by the student community. Search by subject, department, or year.
+          <p style={{ fontSize: '1rem', color: 'var(--color-text-secondary)', lineHeight: '1.5' }}>
+            Find previous year question papers by subject or department. High authenticity guaranteed by our AI scoring system.
           </p>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="card" style={{ padding: '20px', borderRadius: '12px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '14px' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: 'var(--color-text-secondary)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Subject</label>
-            <input
-              className="glass-input"
-              placeholder="e.g., Mathematics"
-              value={q.subject}
-              onChange={e => setQ({ ...q, subject: e.target.value })}
-              onKeyDown={e => e.key === 'Enter' && load()}
-            />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: 'var(--color-text-secondary)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Department</label>
-            <input
-              className="glass-input"
-              placeholder="e.g., Computer Science"
-              value={q.department}
-              onChange={e => setQ({ ...q, department: e.target.value })}
-              onKeyDown={e => e.key === 'Enter' && load()}
-            />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: 'var(--color-text-secondary)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Year</label>
-            <input
-              className="glass-input"
-              placeholder="e.g., 2023"
-              type="number"
-              value={q.year}
-              onChange={e => setQ({ ...q, year: e.target.value })}
-              onKeyDown={e => e.key === 'Enter' && load()}
-            />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: 'var(--color-text-secondary)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Sort By</label>
-            <select
-              className="glass-input"
-              value={q.sort}
-              onChange={e => setQ({ ...q, sort: e.target.value })}
-            >
-              <option value="new">Newest First</option>
-              <option value="downloads">Most Downloaded</option>
-            </select>
-          </div>
-        </div>
-        <button
-          className="btn-primary"
-          style={{ width: '100%', justifyContent: 'center', padding: '10px', fontSize: '0.9375rem', borderRadius: '8px' }}
-          onClick={load}
-          disabled={loading}
-        >
-          <Search className="w-4 h-4" />
-          {loading ? 'Searching...' : 'Search Papers'}
-        </button>
-      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: filterOpen ? '280px 1fr' : '1fr', gap: '32px', alignItems: 'start' }}>
 
-      {/* Results */}
-      {loading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 0' }}>
-          <div className="spinner" />
-          <p style={{ marginTop: '16px', color: 'var(--color-text-secondary)', fontSize: '0.9375rem' }}>Loading papers...</p>
-        </div>
-      ) : items.length === 0 ? (
-        <div className="card empty-state">
-          <BookOpen className="empty-state-icon" />
-          <p style={{ fontWeight: '600', color: 'var(--color-text)', marginBottom: '6px' }}>No papers found</p>
-          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>Try adjusting your search filters or upload the first paper!</p>
-        </div>
-      ) : (
-        <div>
-          <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-              <strong style={{ color: 'var(--color-text)' }}>{items.length}</strong> paper{items.length !== 1 ? 's' : ''} found
-            </p>
+        {/* Sidebar Filters */}
+        {filterOpen && (
+          <aside className="animate-fade-in" style={{ position: 'sticky', top: '100px' }}>
+            <div className="card" style={{ padding: '24px', borderRadius: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                <h2 style={{ fontSize: '0.875rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text)' }}>Filters</h2>
+                {hasActiveFilters && (
+                  <button onClick={clearFilters} style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: '600', background: 'none', border: 'none', cursor: 'pointer' }}>Reset</button>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: 'var(--color-text-secondary)', marginBottom: '8px' }}>Subject</label>
+                  <div style={{ position: 'relative' }}>
+                    <Search className="w-4 h-4" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
+                    <input
+                      className="glass-input"
+                      placeholder="e.g. Mathematics"
+                      value={q.subject}
+                      style={{ paddingLeft: '38px' }}
+                      onChange={e => setQ({ ...q, subject: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: 'var(--color-text-secondary)', marginBottom: '8px' }}>Department</label>
+                  <input
+                    className="glass-input"
+                    placeholder="e.g. Computer Science"
+                    value={q.department}
+                    onChange={e => setQ({ ...q, department: e.target.value })}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: 'var(--color-text-secondary)', marginBottom: '8px' }}>Year</label>
+                    <input
+                      className="glass-input"
+                      type="number"
+                      placeholder="2023"
+                      value={q.year}
+                      onChange={e => setQ({ ...q, year: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', color: 'var(--color-text-secondary)', marginBottom: '8px' }}>Sort</label>
+                    <select
+                      className="glass-input"
+                      value={q.sort}
+                      onChange={e => setQ({ ...q, sort: e.target.value })}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <option value="new">Newest</option>
+                      <option value="downloads">Popular</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: '8px', padding: '16px', background: 'var(--color-bg)', borderRadius: '10px' }}>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Filter className="w-3.5 h-3.5" />
+                    Filters are applied instantly
+                  </p>
+                </div>
+              </div>
+            </div>
+          </aside>
+        )}
+
+        {/* Main Results Area */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+          {/* Controls Bar */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <button
+                className="btn-secondary"
+                style={{ padding: '8px 14px', height: '38px' }}
+                onClick={() => setFilterOpen(!filterOpen)}
+              >
+                <Filter className="w-4 h-4" />
+                {filterOpen ? 'Hide Filters' : 'Show Filters'}
+              </button>
+              {!loading && (
+                <span style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', fontWeight: '500' }}>
+                  Showing <strong style={{ color: 'var(--color-text)' }}>{items.length}</strong> results
+                </span>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', background: 'var(--color-surface)', borderRadius: '8px', border: '1px solid var(--color-border)', padding: '2px' }}>
+              <button className="btn-secondary" style={{ padding: '6px', border: 'none', background: 'var(--color-bg)', color: 'var(--color-primary)' }}><LayoutGrid className="w-4 h-4" /></button>
+              <button className="btn-secondary" style={{ padding: '6px', border: 'none', background: 'transparent' }}><List className="w-4 h-4" /></button>
+            </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {items.map(i => (
-              <PaperCard
-                key={i._id}
-                paper={i}
-                onView={setSelectedPaper}
-                onDownload={handleDownload}
-              />
-            ))}
-          </div>
+
+          {/* Grid / List */}
+          {loading ? (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
+              {[1, 2, 3, 4, 5, 6].map(i => <PaperCardSkeleton key={i} />)}
+            </div>
+          ) : items.length === 0 ? (
+            <div className="card empty-state" style={{ padding: '80px 40px' }}>
+              <div style={{
+                width: '64px', height: '64px', borderRadius: '16px',
+                background: 'var(--color-bg)', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', marginBottom: '20px'
+              }}>
+                <Search className="w-8 h-8" style={{ color: '#CBD5E1' }} />
+              </div>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: '700', color: 'var(--color-text)', marginBottom: '8px' }}>No matches found</h3>
+              <p style={{ fontSize: '0.9375rem', color: 'var(--color-text-secondary)', maxWidth: '320px', marginBottom: '24px' }}>
+                We couldn't find any papers matching your current filters. Try broadening your search or resetting all filters.
+              </p>
+              <button className="btn-outline" onClick={clearFilters}>Reset All Filters</button>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
+              {items.map(i => (
+                <PaperCard
+                  key={i._id}
+                  paper={i}
+                  onView={setSelectedPaper}
+                  onDownload={handleDownload}
+                />
+              ))}
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {selectedPaper && (
         <PdfPreview
@@ -243,7 +328,7 @@ export default function Papers() {
           subtitle={`${selectedPaper.department} • ${selectedPaper.year}`}
           onClose={() => setSelectedPaper(null)}
           paperId={selectedPaper._id}
-          onDownload={load}
+          onDownload={() => load()}
         />
       )}
     </div>

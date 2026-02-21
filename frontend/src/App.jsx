@@ -1,12 +1,11 @@
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom'
-import { useState } from 'react'
-import { BookOpen, Upload as UploadIcon, LayoutDashboard, Trophy, Settings, LogOut, User, Menu, X, Shield } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { BookOpen, Upload as UploadIcon, LayoutDashboard, Settings, LogOut, User, Menu, X, Shield, ChevronRight, Home } from 'lucide-react'
 import AuthPage from './pages/AuthPage'
 import Upload from './pages/Upload'
 import Dashboard from './pages/Dashboard'
 import Papers from './pages/Papers'
 import Admin from './pages/Admin'
-import Leaderboard from './pages/Leaderboard'
 import { useAuth } from './context/AuthContext'
 
 function Protected({ children, roles }) {
@@ -27,18 +26,52 @@ function NavLink({ to, icon: Icon, children }) {
   )
 }
 
+const PAGE_META = {
+  '/papers': { label: 'Browse Papers' },
+  '/upload': { label: 'Upload Paper' },
+  '/dashboard': { label: 'My Dashboard' },
+  '/admin': { label: 'Admin Panel' },
+}
+
+function Breadcrumb() {
+  const location = useLocation()
+  const page = PAGE_META[location.pathname]
+  if (!page) return null
+  return (
+    <div className="breadcrumb page-container" style={{ borderBottom: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
+      <Link to="/papers"><Home className="w-3 h-3" />Home</Link>
+      <span className="breadcrumb-sep"><ChevronRight className="w-3 h-3" /></span>
+      <span className="breadcrumb-current">{page.label}</span>
+    </div>
+  )
+}
+
 function AppLayout({ children }) {
   const { user, logout } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+  const location = useLocation()
+
+  // Scroll-aware navbar
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 10)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [location.pathname])
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--color-bg)' }}>
       {/* Navbar */}
-      <nav className="navbar sticky top-0 z-50">
+      <nav className={`navbar sticky top-0 z-50 ${scrolled ? 'navbar--scrolled' : ''}`}>
         <div className="page-container">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '60px' }}>
             {/* Logo */}
-            <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
+            <Link to="/papers" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
               <div style={{
                 width: '34px', height: '34px', borderRadius: '8px',
                 background: 'var(--color-primary)',
@@ -54,16 +87,15 @@ function AppLayout({ children }) {
 
             {/* Desktop Nav */}
             <div className="hidden md:flex items-center gap-1">
-              <NavLink to="/papers" icon={BookOpen}>Papers</NavLink>
+              <NavLink to="/papers" icon={BookOpen}>Browse Papers</NavLink>
               {user?.role !== 'admin' && (
                 <>
-                  <NavLink to="/upload" icon={UploadIcon}>Upload</NavLink>
-                  <NavLink to="/dashboard" icon={LayoutDashboard}>Dashboard</NavLink>
+                  <NavLink to="/upload" icon={UploadIcon}>Upload Paper</NavLink>
+                  <NavLink to="/dashboard" icon={LayoutDashboard}>My Dashboard</NavLink>
                 </>
               )}
-              <NavLink to="/leaderboard" icon={Trophy}>Leaderboard</NavLink>
               {user?.role === 'admin' && (
-                <NavLink to="/admin" icon={Shield}>Admin</NavLink>
+                <NavLink to="/admin" icon={Shield}>Admin Panel</NavLink>
               )}
             </div>
 
@@ -110,23 +142,27 @@ function AppLayout({ children }) {
         </div>
 
         {/* Mobile Menu */}
-        {mobileOpen && (
+        <div style={{
+          overflow: 'hidden',
+          maxHeight: mobileOpen ? '400px' : '0',
+          opacity: mobileOpen ? 1 : 0,
+          transition: 'max-height 0.3s ease, opacity 0.25s ease',
+        }}>
           <div style={{
             background: 'var(--color-surface)',
             borderTop: '1px solid var(--color-border)',
             padding: '12px 16px 16px',
           }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <NavLink to="/papers" icon={BookOpen}>Papers</NavLink>
+              <NavLink to="/papers" icon={BookOpen}>Browse Papers</NavLink>
               {user?.role !== 'admin' && (
                 <>
-                  <NavLink to="/upload" icon={UploadIcon}>Upload</NavLink>
-                  <NavLink to="/dashboard" icon={LayoutDashboard}>Dashboard</NavLink>
+                  <NavLink to="/upload" icon={UploadIcon}>Upload Paper</NavLink>
+                  <NavLink to="/dashboard" icon={LayoutDashboard}>My Dashboard</NavLink>
                 </>
               )}
-              <NavLink to="/leaderboard" icon={Trophy}>Leaderboard</NavLink>
               {user?.role === 'admin' && (
-                <NavLink to="/admin" icon={Shield}>Admin</NavLink>
+                <NavLink to="/admin" icon={Shield}>Admin Panel</NavLink>
               )}
               <hr style={{ margin: '8px 0', borderColor: 'var(--color-border)' }} />
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 4px' }}>
@@ -147,7 +183,8 @@ function AppLayout({ children }) {
                   padding: '8px 12px', borderRadius: '8px',
                   color: 'var(--color-danger)', background: 'var(--color-danger-bg)',
                   border: '1px solid #FECACA', fontWeight: '600', fontSize: '0.875rem',
-                  cursor: 'pointer', marginTop: '4px'
+                  cursor: 'pointer', marginTop: '4px',
+                  transition: 'background 0.15s ease'
                 }}
               >
                 <LogOut className="w-4 h-4" />
@@ -155,11 +192,14 @@ function AppLayout({ children }) {
               </button>
             </div>
           </div>
-        )}
+        </div>
       </nav>
 
+      {/* Breadcrumb */}
+      <Breadcrumb />
+
       {/* Main Content */}
-      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 24px' }}>
+      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 24px' }} key={location.pathname} className="animate-fade-in">
         {children}
       </main>
     </div>
@@ -185,7 +225,7 @@ export default function App() {
         <Route path="/papers" element={<Papers />} />
         <Route path="/upload" element={<Upload />} />
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/leaderboard" element={<Leaderboard />} />
+        <Route path="/leaderboard" element={<Navigate to="/dashboard" replace />} />
         <Route path="/admin" element={<Protected roles={['admin']}><Admin /></Protected>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
