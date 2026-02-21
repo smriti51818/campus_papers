@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BookOpen, Mail, Lock, User, AlertCircle, LogIn, UserPlus } from 'lucide-react'
+import { BookOpen, Mail, Lock, User, AlertCircle, LogIn, UserPlus, Shield } from 'lucide-react'
 import api from '../utils/api'
 import { useAuth } from '../context/AuthContext'
 
@@ -11,6 +11,7 @@ export default function AuthPage() {
   const [form, setForm] = useState({ name: '', email: '', password: '' })
   const [err, setErr] = useState('')
   const [emailErr, setEmailErr] = useState('')
+  const [loading, setLoading] = useState(false)
 
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[A-Za-z0-9-]+\.[A-Za-z]{2,}$/
@@ -22,164 +23,211 @@ export default function AuthPage() {
     setErr('')
     setEmailErr('')
     if (!validateEmail(form.email)) {
-      setEmailErr(`Please enter a part following '@'. '${form.email}' is incomplete.`)
+      setEmailErr(`Please enter a valid email address.`)
       return
     }
+    setLoading(true)
     try {
       const endpoint = isLogin ? '/api/auth/login' : '/api/auth/signup'
       const { data } = await api.post(endpoint, form)
       login(data.token, data.user)
-      if (data.user.role === 'admin') {
-        nav('/admin')
-      } else {
-        nav('/')
-      }
+      if (data.user.role === 'admin') nav('/admin')
+      else nav('/')
     } catch (e) {
       const errorMessage = e.response?.data?.message || (isLogin ? 'Login failed' : 'Signup failed')
       setErr(errorMessage)
+    } finally {
+      setLoading(false)
     }
   }
 
+  const switchTab = (toLogin) => {
+    setIsLogin(toLogin)
+    setErr('')
+    setEmailErr('')
+    setForm({ name: '', email: '', password: '' })
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 animate-fade-in" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl glass-card-dark mb-4 shadow-2xl">
-            <BookOpen className="w-10 h-10 text-white" />
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '24px 16px',
+      background: 'var(--color-bg)'
+    }}>
+      <div style={{ width: '100%', maxWidth: '420px' }} className="animate-fade-in">
+        {/* Logo & Brand */}
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            width: '52px', height: '52px', borderRadius: '12px',
+            background: 'var(--color-primary)', marginBottom: '16px',
+            boxShadow: '0 4px 12px rgba(37,99,235,0.3)'
+          }}>
+            <BookOpen className="w-7 h-7 text-white" />
           </div>
-          <h1 className="text-5xl font-bold text-white mb-2">CampusPapers</h1>
-          <p className="text-indigo-100">Your academic resource hub</p>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: '800', color: 'var(--color-text)', letterSpacing: '-0.02em', marginBottom: '6px' }}>
+            CampusPapers
+          </h1>
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9375rem' }}>
+            Your academic question paper hub
+          </p>
         </div>
 
-        {/* Auth Form Card */}
-        <div className="glass-card rounded-3xl p-8 border-2 shadow-2xl">
-          {/* Tabs */}
-          <div className="mb-6">
-            <div className="glass-card rounded-2xl p-1 flex gap-1">
-              <button
-                onClick={() => {
-                  setIsLogin(true)
-                  setErr('')
-                  setForm({ name: '', email: '', password: '' })
-                }}
-                className={`flex-1 py-3 px-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${isLogin ? 'text-white shadow-lg' : 'text-gray-600'
-                  }`}
-                style={isLogin ? { background: '#4F46E5' } : {}}
-              >
-                <LogIn className="w-4 h-4" />
-                Login
-              </button>
-              <button
-                onClick={() => {
-                  setIsLogin(false)
-                  setErr('')
-                  setForm({ name: '', email: '', password: '' })
-                }}
-                className={`flex-1 py-3 px-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${!isLogin ? 'text-white shadow-lg' : 'text-gray-600'
-                  }`}
-                style={!isLogin ? { background: '#4F46E5' } : {}}
-              >
-                <UserPlus className="w-4 h-4" />
-                Sign Up
-              </button>
-            </div>
+        {/* Card */}
+        <div style={{
+          background: 'var(--color-surface)',
+          border: '1px solid var(--color-border)',
+          borderRadius: '16px',
+          padding: '32px',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.07)'
+        }}>
+          {/* Tab Switcher */}
+          <div style={{
+            display: 'flex',
+            background: 'var(--color-bg)',
+            borderRadius: '10px',
+            padding: '4px',
+            marginBottom: '24px',
+            gap: '4px'
+          }}>
+            <button
+              onClick={() => switchTab(true)}
+              style={{
+                flex: 1, padding: '9px 16px', borderRadius: '8px',
+                fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer',
+                border: 'none', transition: 'all 0.15s ease',
+                background: isLogin ? 'var(--color-surface)' : 'transparent',
+                color: isLogin ? 'var(--color-text)' : 'var(--color-text-secondary)',
+                boxShadow: isLogin ? 'var(--shadow-sm)' : 'none',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+              }}
+            >
+              <LogIn className="w-4 h-4" />
+              Sign In
+            </button>
+            <button
+              onClick={() => switchTab(false)}
+              style={{
+                flex: 1, padding: '9px 16px', borderRadius: '8px',
+                fontWeight: '600', fontSize: '0.875rem', cursor: 'pointer',
+                border: 'none', transition: 'all 0.15s ease',
+                background: !isLogin ? 'var(--color-surface)' : 'transparent',
+                color: !isLogin ? 'var(--color-text)' : 'var(--color-text-secondary)',
+                boxShadow: !isLogin ? 'var(--shadow-sm)' : 'none',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+              }}
+            >
+              <UserPlus className="w-4 h-4" />
+              Sign Up
+            </button>
           </div>
 
-          {/* Error Message */}
+          {/* Error Banner */}
           {err && (
-            <div className="mb-4 p-4 rounded-xl border flex items-start gap-3" style={{ background: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)', color: '#DC2626' }}>
-              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-semibold mb-1">Authentication Error</p>
-                <p className="text-sm">{err}</p>
-              </div>
+            <div style={{
+              marginBottom: '20px', padding: '12px 14px',
+              borderRadius: '8px', border: '1px solid #FECACA',
+              background: 'var(--color-danger-bg)',
+              display: 'flex', alignItems: 'flex-start', gap: '10px'
+            }}>
+              <AlertCircle className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--color-danger)', marginTop: '2px' }} />
+              <p style={{ fontSize: '0.875rem', color: 'var(--color-danger)', fontWeight: '500' }}>{err}</p>
             </div>
           )}
 
-          {/* Form */}
-          <form onSubmit={onSubmit} className="space-y-4">
-            {!isLogin && (
+          <form onSubmit={onSubmit}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              {!isLogin && (
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '600', color: 'var(--color-text)', marginBottom: '6px' }}>
+                    Full Name
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <User className="w-4 h-4" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-secondary)' }} />
+                    <input
+                      className="glass-input"
+                      style={{ paddingLeft: '38px' }}
+                      placeholder="Enter your full name"
+                      value={form.name}
+                      onChange={(e) => setForm({ ...form, name: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+
               <div>
-                <label className="block text-sm font-semibold mb-2" style={{ color: '#4F46E5' }}>Full Name</label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5" style={{ color: '#6366F1' }} />
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '600', color: 'var(--color-text)', marginBottom: '6px' }}>
+                  Email Address
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <Mail className="w-4 h-4" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-secondary)' }} />
                   <input
-                    className="w-full glass-input rounded-xl pl-11 pr-4 py-3 text-sm font-medium"
-                    style={{ color: '#1E293B' }}
-                    placeholder="Enter your full name"
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    type="email"
+                    className="glass-input"
+                    style={{ paddingLeft: '38px' }}
+                    placeholder="you@example.com"
+                    value={form.email}
+                    onChange={(e) => { setForm({ ...form, email: e.target.value }); setEmailErr('') }}
+                    required
+                  />
+                </div>
+                {emailErr && (
+                  <p style={{ marginTop: '6px', fontSize: '0.8125rem', color: 'var(--color-warning)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <AlertCircle className="w-3.5 h-3.5" />{emailErr}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '600', color: 'var(--color-text)', marginBottom: '6px' }}>
+                  Password
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <Lock className="w-4 h-4" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-secondary)' }} />
+                  <input
+                    type="password"
+                    className="glass-input"
+                    style={{ paddingLeft: '38px' }}
+                    placeholder="Enter your password"
+                    value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
                     required
                   />
                 </div>
               </div>
-            )}
 
-            <div>
-              <label className="block text-sm font-semibold mb-2" style={{ color: '#4F46E5' }}>Email Address</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5" style={{ color: '#6366F1' }} />
-                <input
-                  type="email"
-                  className="w-full glass-input rounded-xl pl-11 pr-4 py-3 text-sm font-medium"
-                  style={{ color: '#1E293B' }}
-                  placeholder="Enter your email"
-                  value={form.email}
-                  onChange={(e) => {
-                    setForm({ ...form, email: e.target.value })
-                    setEmailErr('')
-                  }}
-                  required
-                />
-              </div>
-              {emailErr && (
-                <div className="flex items-center gap-2 mt-2 p-3 rounded-lg border text-sm" style={{ background: 'rgba(245, 158, 11, 0.1)', borderColor: 'rgba(245, 158, 11, 0.3)', color: '#D97706' }}>
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                  <span>{emailErr}</span>
-                </div>
-              )}
+              <button
+                type="submit"
+                disabled={loading}
+                className="btn-primary"
+                style={{ width: '100%', justifyContent: 'center', padding: '11px 20px', fontSize: '0.9375rem', borderRadius: '10px', marginTop: '4px' }}
+              >
+                {loading ? (
+                  <><div className="spinner" style={{ width: '18px', height: '18px', borderWidth: '2px' }} />Processing...</>
+                ) : isLogin ? (
+                  <><LogIn className="w-4 h-4" />Sign In to Account</>
+                ) : (
+                  <><UserPlus className="w-4 h-4" />Create Account</>
+                )}
+              </button>
             </div>
-
-            <div>
-              <label className="block text-sm font-semibold mb-2" style={{ color: '#4F46E5' }}>Password</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5" style={{ color: '#6366F1' }} />
-                <input
-                  type="password"
-                  className="w-full glass-input rounded-xl pl-11 pr-4 py-3 text-sm font-medium"
-                  style={{ color: '#1E293B' }}
-                  placeholder="Enter your password"
-                  value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  required
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              className="w-full py-3 rounded-xl text-white font-bold transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02] flex items-center justify-center gap-2"
-              style={{ background: '#4F46E5' }}
-            >
-              {isLogin ? (
-                <>
-                  <LogIn className="w-5 h-5" />
-                  Login to Account
-                </>
-              ) : (
-                <>
-                  <UserPlus className="w-5 h-5" />
-                  Create Account
-                </>
-              )}
-            </button>
           </form>
         </div>
 
-        {/* Footer */}
-        <p className="text-center mt-6 text-indigo-100 text-sm">
-          Secure authentication powered by JWT
+        {/* Admin hint */}
+        <div style={{ marginTop: '24px', padding: '14px 16px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Shield className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--color-text-secondary)' }} />
+          <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>
+            Admin access is role-based. Sign in with your admin credentials.
+          </p>
+        </div>
+
+        <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>
+          Secured with JWT authentication
         </p>
       </div>
     </div>

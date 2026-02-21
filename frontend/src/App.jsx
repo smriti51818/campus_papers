@@ -1,5 +1,6 @@
-import { Routes, Route, Navigate, Link } from 'react-router-dom'
-import { BookOpen, Upload as UploadIcon, LayoutDashboard, Trophy, Settings, LogOut, User } from 'lucide-react'
+import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom'
+import { useState } from 'react'
+import { BookOpen, Upload as UploadIcon, LayoutDashboard, Trophy, Settings, LogOut, User, Menu, X, Shield } from 'lucide-react'
 import AuthPage from './pages/AuthPage'
 import Upload from './pages/Upload'
 import Dashboard from './pages/Dashboard'
@@ -15,98 +16,152 @@ function Protected({ children, roles }) {
   return children
 }
 
+function NavLink({ to, icon: Icon, children }) {
+  const location = useLocation()
+  const isActive = location.pathname === to || (to !== '/' && location.pathname.startsWith(to))
+  return (
+    <Link to={to} className={`nav-link ${isActive ? 'active' : ''}`}>
+      <Icon className="w-4 h-4" />
+      {children}
+    </Link>
+  )
+}
+
 function AppLayout({ children }) {
   const { user, logout } = useAuth()
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
-    <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
-      {/* Glass Navbar */}
-      <nav className="glass-navbar sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
+    <div className="min-h-screen" style={{ background: 'var(--color-bg)' }}>
+      {/* Navbar */}
+      <nav className="navbar sticky top-0 z-50">
+        <div className="page-container">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '60px' }}>
             {/* Logo */}
-            <Link to="/" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg transform group-hover:scale-105 transition-transform" style={{ background: '#4F46E5' }}>
-                <BookOpen className="w-6 h-6 text-white" />
+            <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
+              <div style={{
+                width: '34px', height: '34px', borderRadius: '8px',
+                background: 'var(--color-primary)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <BookOpen className="w-5 h-5 text-white" />
               </div>
-              <span className="text-2xl font-bold hidden sm:block" style={{ color: '#4F46E5' }}>CampusPapers</span>
+              <span style={{ fontSize: '1.0625rem', fontWeight: '700', color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
+                CampusPapers
+              </span>
             </Link>
 
-            {/* Navigation Links */}
-            <div className="flex items-center gap-2">
-              <Link
-                to="/papers"
-                className="px-4 py-2 rounded-xl hover:bg-white/50 transition-all font-medium text-sm backdrop-blur-sm flex items-center gap-2"
-                style={{ color: '#4F46E5' }}
-              >
-                <BookOpen className="w-4 h-4" />
-                Papers
-              </Link>
+            {/* Desktop Nav */}
+            <div className="hidden md:flex items-center gap-1">
+              <NavLink to="/papers" icon={BookOpen}>Papers</NavLink>
               {user?.role !== 'admin' && (
                 <>
-                  <Link
-                    to="/upload"
-                    className="px-4 py-2 rounded-xl hover:bg-white/50 transition-all font-medium text-sm backdrop-blur-sm flex items-center gap-2"
-                    style={{ color: '#4F46E5' }}
-                  >
-                    <UploadIcon className="w-4 h-4" />
-                    Upload
-                  </Link>
-                  <Link
-                    to="/dashboard"
-                    className="px-4 py-2 rounded-xl hover:bg-white/50 transition-all font-medium text-sm backdrop-blur-sm flex items-center gap-2"
-                    style={{ color: '#4F46E5' }}
-                  >
-                    <LayoutDashboard className="w-4 h-4" />
-                    Dashboard
-                  </Link>
+                  <NavLink to="/upload" icon={UploadIcon}>Upload</NavLink>
+                  <NavLink to="/dashboard" icon={LayoutDashboard}>Dashboard</NavLink>
                 </>
               )}
-              <Link
-                to="/leaderboard"
-                className="px-4 py-2 rounded-xl hover:bg-white/50 transition-all font-medium text-sm backdrop-blur-sm flex items-center gap-2"
-                style={{ color: '#4F46E5' }}
-              >
-                <Trophy className="w-4 h-4" />
-                Leaderboard
-              </Link>
+              <NavLink to="/leaderboard" icon={Trophy}>Leaderboard</NavLink>
               {user?.role === 'admin' && (
-                <Link
-                  to="/admin"
-                  className="px-4 py-2 rounded-xl transition-all font-semibold text-sm backdrop-blur-sm border flex items-center gap-2"
-                  style={{ background: 'rgba(9, 99, 126, 0.1)', color: '#4F46E5', borderColor: 'rgba(9, 99, 126, 0.3)' }}
-                >
-                  <Settings className="w-4 h-4" />
-                  Admin
-                </Link>
+                <NavLink to="/admin" icon={Shield}>Admin</NavLink>
               )}
             </div>
 
             {/* User Section */}
-            <div className="flex items-center gap-3">
-              <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl glass-card">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ background: '#6366F1' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {/* Avatar */}
+              <div className="hidden md:flex items-center gap-2" style={{
+                padding: '6px 12px',
+                background: 'var(--color-bg)',
+                border: '1px solid var(--color-border)',
+                borderRadius: '8px'
+              }}>
+                <div style={{
+                  width: '28px', height: '28px',
+                  borderRadius: '50%',
+                  background: 'var(--color-primary)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: 'white', fontSize: '0.75rem', fontWeight: '700', flexShrink: 0
+                }}>
                   {user?.name?.charAt(0).toUpperCase()}
                 </div>
-                <span className="text-sm font-semibold" style={{ color: '#4F46E5' }}>{user?.name}</span>
+                <span style={{ fontSize: '0.8125rem', fontWeight: '600', color: 'var(--color-text)', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {user?.name}
+                </span>
               </div>
               <button
                 onClick={logout}
-                className="px-4 py-2 rounded-xl transition-all font-semibold text-sm backdrop-blur-sm border flex items-center gap-2"
-                style={{ background: 'rgba(220, 53, 69, 0.1)', color: '#dc3545', borderColor: 'rgba(220, 53, 69, 0.3)' }}
+                className="btn-secondary hidden md:inline-flex"
+                style={{ padding: '6px 12px', borderRadius: '8px', color: 'var(--color-danger)', borderColor: '#FECACA' }}
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </button>
+              {/* Mobile hamburger */}
+              <button
+                className="md:hidden btn-secondary"
+                style={{ padding: '6px 8px' }}
+                onClick={() => setMobileOpen(!mobileOpen)}
+              >
+                {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile Menu */}
+        {mobileOpen && (
+          <div style={{
+            background: 'var(--color-surface)',
+            borderTop: '1px solid var(--color-border)',
+            padding: '12px 16px 16px',
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <NavLink to="/papers" icon={BookOpen}>Papers</NavLink>
+              {user?.role !== 'admin' && (
+                <>
+                  <NavLink to="/upload" icon={UploadIcon}>Upload</NavLink>
+                  <NavLink to="/dashboard" icon={LayoutDashboard}>Dashboard</NavLink>
+                </>
+              )}
+              <NavLink to="/leaderboard" icon={Trophy}>Leaderboard</NavLink>
+              {user?.role === 'admin' && (
+                <NavLink to="/admin" icon={Shield}>Admin</NavLink>
+              )}
+              <hr style={{ margin: '8px 0', borderColor: 'var(--color-border)' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 4px' }}>
+                <div style={{
+                  width: '30px', height: '30px', borderRadius: '50%',
+                  background: 'var(--color-primary)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: 'white', fontSize: '0.8125rem', fontWeight: '700'
+                }}>
+                  {user?.name?.charAt(0).toUpperCase()}
+                </div>
+                <span style={{ fontWeight: '600', fontSize: '0.875rem', color: 'var(--color-text)' }}>{user?.name}</span>
+              </div>
+              <button
+                onClick={logout}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  padding: '8px 12px', borderRadius: '8px',
+                  color: 'var(--color-danger)', background: 'var(--color-danger-bg)',
+                  border: '1px solid #FECACA', fontWeight: '600', fontSize: '0.875rem',
+                  cursor: 'pointer', marginTop: '4px'
+                }}
               >
                 <LogOut className="w-4 h-4" />
                 Logout
               </button>
             </div>
           </div>
-        </div>
+        )}
       </nav>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 24px' }}>
         {children}
-      </div>
+      </main>
     </div>
   )
 }
@@ -114,7 +169,6 @@ function AppLayout({ children }) {
 export default function App() {
   const { user } = useAuth()
 
-  // If not logged in, show only auth page
   if (!user) {
     return (
       <Routes>
@@ -124,7 +178,6 @@ export default function App() {
     )
   }
 
-  // If logged in, show app with header
   return (
     <AppLayout>
       <Routes>
@@ -133,7 +186,7 @@ export default function App() {
         <Route path="/upload" element={<Upload />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
-        <Route path="/admin" element={<Protected roles={["admin"]}><Admin /></Protected>} />
+        <Route path="/admin" element={<Protected roles={['admin']}><Admin /></Protected>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AppLayout>

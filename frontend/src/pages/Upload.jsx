@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Upload as UploadIcon, FileText, Rocket } from 'lucide-react'
+import { Upload as UploadIcon, FileText, Rocket, CheckCircle, XCircle } from 'lucide-react'
 import api from '../utils/api'
 
 export default function Upload() {
@@ -8,7 +8,9 @@ export default function Upload() {
   const [form, setForm] = useState({ department: '', subject: '', year: '', semester: '', university: '' })
   const [file, setFile] = useState(null)
   const [msg, setMsg] = useState('')
+  const [msgType, setMsgType] = useState('') // 'success' | 'error'
   const [uploading, setUploading] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
 
   const submit = async (e) => {
     e.preventDefault()
@@ -19,152 +21,217 @@ export default function Upload() {
     fd.append('file', file)
     try {
       await api.post('/api/papers/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
-      setMsg('✅ Upload successful! Your paper is pending approval.')
-      setTimeout(() => nav('/dashboard'), 2000)
+      setMsg('Upload successful! Your paper is pending admin approval.')
+      setMsgType('success')
+      setTimeout(() => nav('/dashboard'), 2500)
     } catch (e) {
       const errorMessage = e.response?.data?.message || e.message || 'Upload failed'
-      setMsg(`❌ ${errorMessage}`)
+      setMsg(errorMessage)
+      setMsgType('error')
     } finally {
       setUploading(false)
     }
   }
 
+  const handleDrop = (e) => {
+    e.preventDefault()
+    setDragOver(false)
+    const dropped = e.dataTransfer.files[0]
+    if (dropped && dropped.type === 'application/pdf') setFile(dropped)
+  }
+
   return (
-    <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="glass-card rounded-3xl p-10 border-2">
-        <div className="flex items-center gap-4 mb-3">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-xl" style={{ background: '#4F46E5' }}>
-            <UploadIcon className="w-8 h-8 text-white" />
+    <div style={{ maxWidth: '640px', margin: '0 auto' }} className="section-gap animate-fade-in">
+      {/* Page Header */}
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
+          <div style={{
+            width: '40px', height: '40px', borderRadius: '10px',
+            background: 'var(--color-primary)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            <UploadIcon className="w-5 h-5 text-white" />
           </div>
-          <div>
-            <h1 className="text-4xl font-bold" style={{ color: '#4F46E5' }}>Upload Paper</h1>
-            <p className="mt-1" style={{ color: '#6366F1' }}>Share knowledge with the community</p>
-          </div>
+          <h1 style={{ fontSize: '1.625rem', fontWeight: '800', color: 'var(--color-text)', letterSpacing: '-0.02em' }}>
+            Upload Paper
+          </h1>
         </div>
+        <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9375rem', marginLeft: '52px' }}>
+          Share past year question papers with the student community.
+        </p>
       </div>
 
-      {/* Upload Form */}
-      <div className="glass-card rounded-2xl p-8 border">
+      {/* Form Card */}
+      <div className="card" style={{ padding: '32px', borderRadius: '16px' }}>
+        {/* Status Message */}
         {msg && (
-          <div className={`mb-6 p-4 rounded-xl font-semibold border`} style={msg.includes('✅') ? { background: 'rgba(40, 167, 69, 0.1)', color: '#28a745', borderColor: 'rgba(40, 167, 69, 0.3)' } : { background: 'rgba(220, 53, 69, 0.1)', color: '#dc3545', borderColor: 'rgba(220, 53, 69, 0.3)' }}>
-            {msg}
+          <div style={{
+            marginBottom: '24px', padding: '14px 16px',
+            borderRadius: '10px', display: 'flex', alignItems: 'flex-start', gap: '10px',
+            ...(msgType === 'success'
+              ? { background: 'var(--color-success-bg)', border: '1px solid #BBF7D0', color: 'var(--color-success)' }
+              : { background: 'var(--color-danger-bg)', border: '1px solid #FECACA', color: 'var(--color-danger)' })
+          }}>
+            {msgType === 'success'
+              ? <CheckCircle className="w-5 h-5 flex-shrink-0" />
+              : <XCircle className="w-5 h-5 flex-shrink-0" />}
+            <p style={{ fontSize: '0.875rem', fontWeight: '500' }}>{msg}</p>
           </div>
         )}
 
-        <form onSubmit={submit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-semibold mb-2" style={{ color: '#4F46E5' }}>Department *</label>
-            <input
-              className="w-full glass-input rounded-xl px-4 py-3 text-sm font-medium placeholder-gray-400"
-              style={{ color: '#4F46E5' }}
-              placeholder="e.g., Computer Science"
-              value={form.department}
-              onChange={e => setForm({ ...form, department: e.target.value })}
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold mb-2" style={{ color: '#4F46E5' }}>Subject *</label>
-            <input
-              className="w-full glass-input rounded-xl px-4 py-3 text-sm font-medium placeholder-gray-400"
-              style={{ color: '#4F46E5' }}
-              placeholder="e.g., Data Structures"
-              value={form.subject}
-              onChange={e => setForm({ ...form, subject: e.target.value })}
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+        <form onSubmit={submit}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Department */}
             <div>
-              <label className="block text-sm font-semibold mb-2" style={{ color: '#4F46E5' }}>Year *</label>
-              <input
-                className="w-full glass-input rounded-xl px-4 py-3 text-sm font-medium placeholder-gray-400"
-                style={{ color: '#4F46E5' }}
-                placeholder="e.g., 2023"
-                type="number"
-                value={form.year}
-                onChange={e => setForm({ ...form, year: e.target.value })}
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold mb-2" style={{ color: '#4F46E5' }}>Semester *</label>
-              <select
-                className="w-full glass-input rounded-xl px-4 py-3 text-sm font-medium"
-                style={{ color: '#4F46E5' }}
-                value={form.semester}
-                onChange={e => setForm({ ...form, semester: e.target.value })}
-                required
-              >
-                <option value="" disabled>Select Semester</option>
-                {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
-                  <option key={num} value={num}>Semester {num}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold mb-2" style={{ color: '#4F46E5' }}>University (optional)</label>
-            <input
-              className="w-full glass-input rounded-xl px-4 py-3 text-sm font-medium placeholder-gray-400"
-              style={{ color: '#4F46E5' }}
-              placeholder="e.g., MIT"
-              value={form.university}
-              onChange={e => setForm({ ...form, university: e.target.value })}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold mb-2" style={{ color: '#4F46E5' }}>PDF File *</label>
-            <div className="glass-card border-2 border-dashed rounded-2xl p-8 text-center hover:border-opacity-60 transition-all cursor-pointer" style={{ borderColor: 'rgba(122, 178, 178, 0.5)' }}>
-              <input
-                type="file"
-                accept="application/pdf"
-                onChange={e => setFile(e.target.files[0])}
-                className="hidden"
-                id="file-upload"
-                required
-              />
-              <label htmlFor="file-upload" className="cursor-pointer">
-                {file ? (
-                  <div className="space-y-2">
-                    <FileText className="w-12 h-12 mx-auto" style={{ color: '#6366F1' }} />
-                    <div className="font-bold" style={{ color: '#4F46E5' }}>{file.name}</div>
-                    <div className="text-sm" style={{ color: '#818CF8' }}>Click to change file</div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <UploadIcon className="w-16 h-16 mx-auto" style={{ color: '#818CF8' }} />
-                    <div className="font-bold" style={{ color: '#4F46E5' }}>Click to upload PDF</div>
-                    <div className="text-sm" style={{ color: '#818CF8' }}>Maximum file size: 15MB</div>
-                  </div>
-                )}
+              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '600', color: 'var(--color-text)', marginBottom: '6px' }}>
+                Department <span style={{ color: 'var(--color-danger)' }}>*</span>
               </label>
+              <input
+                className="glass-input"
+                placeholder="e.g., Computer Science"
+                value={form.department}
+                onChange={e => setForm({ ...form, department: e.target.value })}
+                required
+              />
+              <p style={{ marginTop: '4px', fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Enter the academic department this paper belongs to</p>
             </div>
-          </div>
 
-          <button
-            type="submit"
-            disabled={uploading}
-            className="w-full px-6 py-4 text-white rounded-xl transition-all font-bold text-lg shadow-lg transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
-            style={{ background: '#6366F1' }}
-          >
-            {uploading ? (
-              <>
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                Uploading...
-              </>
-            ) : (
-              <>
-                <Rocket className="w-5 h-5" />
-                Upload Paper
-              </>
-            )}
-          </button>
+            {/* Subject */}
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '600', color: 'var(--color-text)', marginBottom: '6px' }}>
+                Subject <span style={{ color: 'var(--color-danger)' }}>*</span>
+              </label>
+              <input
+                className="glass-input"
+                placeholder="e.g., Data Structures & Algorithms"
+                value={form.subject}
+                onChange={e => setForm({ ...form, subject: e.target.value })}
+                required
+              />
+            </div>
+
+            {/* Year + Semester */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '600', color: 'var(--color-text)', marginBottom: '6px' }}>
+                  Year <span style={{ color: 'var(--color-danger)' }}>*</span>
+                </label>
+                <input
+                  className="glass-input"
+                  placeholder="e.g., 2024"
+                  type="number"
+                  min="2000"
+                  max="2030"
+                  value={form.year}
+                  onChange={e => setForm({ ...form, year: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '600', color: 'var(--color-text)', marginBottom: '6px' }}>
+                  Semester <span style={{ color: 'var(--color-danger)' }}>*</span>
+                </label>
+                <select
+                  className="glass-input"
+                  value={form.semester}
+                  onChange={e => setForm({ ...form, semester: e.target.value })}
+                  required
+                  style={{ cursor: 'pointer' }}
+                >
+                  <option value="" disabled>Select semester</option>
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
+                    <option key={num} value={num}>Semester {num}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* University */}
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '600', color: 'var(--color-text)', marginBottom: '6px' }}>
+                University <span style={{ color: 'var(--color-text-secondary)', fontWeight: '400' }}>(optional)</span>
+              </label>
+              <input
+                className="glass-input"
+                placeholder="e.g., MIT, Stanford, IIT Delhi"
+                value={form.university}
+                onChange={e => setForm({ ...form, university: e.target.value })}
+              />
+            </div>
+
+            {/* File Upload */}
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '600', color: 'var(--color-text)', marginBottom: '6px' }}>
+                PDF File <span style={{ color: 'var(--color-danger)' }}>*</span>
+              </label>
+              <div
+                className={`drop-zone ${dragOver ? 'drag-over' : ''}`}
+                onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+              >
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  onChange={e => setFile(e.target.files[0])}
+                  className="hidden"
+                  id="file-upload"
+                  required={!file}
+                />
+                <label htmlFor="file-upload" style={{ cursor: 'pointer', display: 'block' }}>
+                  {file ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                      <div style={{
+                        width: '48px', height: '48px', borderRadius: '10px',
+                        background: 'var(--color-primary-light)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      }}>
+                        <FileText className="w-6 h-6" style={{ color: 'var(--color-primary)' }} />
+                      </div>
+                      <div style={{ fontWeight: '600', color: 'var(--color-text)', fontSize: '0.9375rem' }}>{file.name}</div>
+                      <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>
+                        {(file.size / 1024 / 1024).toFixed(2)} MB · Click to replace
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                      <div style={{
+                        width: '52px', height: '52px', borderRadius: '12px',
+                        background: 'var(--color-bg)',
+                        border: '1.5px solid var(--color-border)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      }}>
+                        <UploadIcon className="w-6 h-6" style={{ color: 'var(--color-text-secondary)' }} />
+                      </div>
+                      <div>
+                        <span style={{ fontWeight: '600', color: 'var(--color-primary)' }}>Click to upload</span>
+                        <span style={{ color: 'var(--color-text-secondary)' }}> or drag & drop</span>
+                      </div>
+                      <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>PDF only · Max 15MB</div>
+                    </div>
+                  )}
+                </label>
+              </div>
+            </div>
+
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={uploading || !file}
+              className="btn-primary"
+              style={{ width: '100%', justifyContent: 'center', padding: '13px 20px', fontSize: '1rem', borderRadius: '10px', marginTop: '4px' }}
+            >
+              {uploading ? (
+                <><div className="spinner" style={{ width: '18px', height: '18px', borderWidth: '2px', borderColor: 'rgba(255,255,255,0.3)', borderTopColor: 'white' }} />Uploading...</>
+              ) : (
+                <><Rocket className="w-5 h-5" />Upload Paper</>
+              )}
+            </button>
+
+            <p style={{ textAlign: 'center', fontSize: '0.8125rem', color: 'var(--color-text-secondary)' }}>
+              Your paper will be reviewed by an admin before it goes live.
+            </p>
+          </div>
         </form>
       </div>
     </div>
