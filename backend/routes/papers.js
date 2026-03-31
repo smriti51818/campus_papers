@@ -14,13 +14,12 @@ router.get('/papers', optionalProtect, async (req, res) => {
   try {
     const { subject, department, year, sort } = req.query
 
-    // Role-based visibility: Admins see all, others only see non-duplicates
+    // Role-based visibility: Admins see all, others only see approved
     const q = {}
     const isAdmin = req.user && req.user.role === 'admin'
 
     if (!isAdmin) {
-      // HIDE DUPLICATES (score 0) and UNAPPROVED PAPERS for non-admins
-      q['aiResult.authenticityScore'] = { $gt: 0 }
+      // For non-admins, show all approved papers (regardless of authenticityScore)
       q.status = 'approved'
     }
 
@@ -29,10 +28,22 @@ router.get('/papers', optionalProtect, async (req, res) => {
     if (year) q.year = Number(year)
 
     const sortBy = sort === 'downloads' ? { downloads: -1 } : { createdAt: -1 }
-    const items = await Paper.find(q).populate('uploadedBy', 'name').sort(sortBy)
+    const items = await Paper.find(q).populate('uploadedBy', 'name _id').sort(sortBy)
     res.json(items)
   } catch (e) {
     res.status(500).json({ message: 'Failed to fetch' })
+  }
+})
+
+// Must be registered before GET /papers/:id so "mine" is not treated as an id
+router.get('/papers/mine', protect, async (req, res) => {
+  try {
+    const items = await Paper.find({ uploadedBy: req.user.id })
+      .populate('uploadedBy', 'name _id')
+      .sort({ createdAt: -1 })
+    res.json(items)
+  } catch (e) {
+    res.status(500).json({ message: 'Failed to fetch your papers' })
   }
 })
 
@@ -195,7 +206,7 @@ router.get('/admin/papers', protect, requireRole('admin'), async (req, res) => {
     const { minScore } = req.query
     const q = {}
     if (minScore) q['aiResult.authenticityScore'] = { $gte: Number(minScore) }
-    const items = await Paper.find(q).populate('uploadedBy', 'name').sort({ createdAt: -1 })
+    const items = await Paper.find(q).populate('uploadedBy', 'name _id').sort({ createdAt: -1 })
     res.json(items)
   } catch (e) {
     res.status(500).json({ message: 'Failed' })

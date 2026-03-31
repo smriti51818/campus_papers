@@ -90,14 +90,13 @@ export default function Dashboard() {
   const loadDashboard = async () => {
     setLoading(true)
     try {
-      const { data } = await api.get('/api/papers')
-      const me = JSON.parse(localStorage.getItem('user') || 'null')
-      const myItems = data.filter(d => d.uploadedBy?._id === me?.id)
+      const { data } = await api.get('/api/papers/mine')
+      const myItems = Array.isArray(data) ? data : []
       setItems(myItems)
 
       const approved = myItems.filter(i => i.status === 'approved').length
       const totalDownloads = myItems.reduce((sum, i) => sum + (i.downloads || 0), 0)
-      const scores = myItems.map(i => Number(i.aiScore)).filter(s => !isNaN(s) && s > 0)
+      const scores = myItems.map(i => Number(i.aiResult?.authenticityScore)).filter(s => !isNaN(s) && s > 0)
       const avgAiScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0
       setStats({ totalUploads: myItems.length, totalDownloads, approvedPapers: approved, avgAiScore })
 
@@ -258,9 +257,9 @@ export default function Dashboard() {
                         </td>
                         <td style={{ color: 'var(--color-text-secondary)', fontWeight: '500' }}>{i.year}</td>
                         <td>
-                          {i.aiScore != null ? (
-                            <span style={{ fontWeight: '700', color: Number(i.aiScore) >= 70 ? 'var(--color-success)' : Number(i.aiScore) >= 40 ? 'var(--color-warning)' : 'var(--color-danger)' }}>
-                              {i.aiScore}%
+                          {i.aiResult?.authenticityScore != null ? (
+                            <span style={{ fontWeight: '700', color: Number(i.aiResult.authenticityScore) >= 70 ? 'var(--color-success)' : Number(i.aiResult.authenticityScore) >= 40 ? 'var(--color-warning)' : 'var(--color-danger)' }}>
+                              {i.aiResult.authenticityScore}%
                             </span>
                           ) : <span style={{ color: '#CBD5E1' }}>—</span>}
                         </td>

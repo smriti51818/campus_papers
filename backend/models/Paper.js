@@ -5,7 +5,7 @@ const paperSchema = new mongoose.Schema(
     department: { type: String, required: true },
     subject: { type: String, required: true },
     year: { type: Number, required: true },
-    semester: { type: String, required: true },
+    semester: { type: Number, required: true },
     university: { type: String },
     fileUrl: { type: String, required: true },
     publicId: { type: String },
