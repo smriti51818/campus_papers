@@ -228,14 +228,14 @@ export default function Admin() {
                           {i.subject} ({i.year})
                         </span>
                         <StatusBadge status={i.status} />
-                        {i.aiScore != null && (
+                        {i.aiResult?.authenticityScore != null && (
                           <span style={{
                             fontSize: '0.75rem', fontWeight: '700', padding: '3px 10px', borderRadius: '9999px',
-                            background: Number(i.aiScore) >= 70 ? 'var(--color-success-bg)' : Number(i.aiScore) >= 40 ? 'var(--color-warning-bg)' : 'var(--color-danger-bg)',
-                            color: Number(i.aiScore) >= 70 ? 'var(--color-success)' : Number(i.aiScore) >= 40 ? '#92400E' : 'var(--color-danger)',
-                            border: `1px solid ${Number(i.aiScore) >= 70 ? '#BBF7D0' : Number(i.aiScore) >= 40 ? '#FDE68A' : '#FECACA'}`
+                            background: Number(i.aiResult.authenticityScore) >= 70 ? 'var(--color-success-bg)' : Number(i.aiResult.authenticityScore) >= 40 ? 'var(--color-warning-bg)' : 'var(--color-danger-bg)',
+                            color: Number(i.aiResult.authenticityScore) >= 70 ? 'var(--color-success)' : Number(i.aiResult.authenticityScore) >= 40 ? '#92400E' : 'var(--color-danger)',
+                            border: `1px solid ${Number(i.aiResult.authenticityScore) >= 70 ? '#BBF7D0' : Number(i.aiResult.authenticityScore) >= 40 ? '#FDE68A' : '#FECACA'}`
                           }}>
-                            AI {i.aiScore}%
+                            AI {i.aiResult.authenticityScore}%
                           </span>
                         )}
                       </div>

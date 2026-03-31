@@ -73,7 +73,7 @@ function PaperCard({ paper, onView, onDownload }) {
             <h3 style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--color-text)', lineHeight: '1.3' }}>
               {paper.subject}
             </h3>
-            <AiScoreBadge score={paper.aiScore} />
+            <AiScoreBadge score={paper.aiResult?.authenticityScore} />
           </div>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}>
