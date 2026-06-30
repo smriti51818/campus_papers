@@ -241,7 +241,8 @@ async function run() {
       console.log(`   ✅ Saved: ${label}\n`)
       uploaded++
     } catch (err) {
-      console.log(`\n   ❌ Failed: ${label} — ${err.message}\n`)
+      const msg = typeof err === 'string' ? err : (err?.message || JSON.stringify(err))
+      console.log(`\n   ❌ Failed: ${label} — ${msg}\n`)
       failed++
     }
   }

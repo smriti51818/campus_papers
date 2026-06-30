@@ -104,7 +104,8 @@ async function run() {
       console.log(`✅ ${prev} → ${aiResult.authenticityScore} | ${aiResult.aiFeedback.slice(0, 70)}`)
       updated++
     } catch (err) {
-      console.log(`❌ ${err.message}`)
+      const msg = typeof err === 'string' ? err : (err?.message || JSON.stringify(err))
+      console.log(`❌ ${msg}`)
       failed++
     }
 
