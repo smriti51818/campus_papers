@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "seed": "node scripts/seed.js"
+    "seed": "node scripts/seed.js",
+    "seed:real": "node scripts/seed-real-papers.js",
+    "rescore": "node scripts/rescore-gemini.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
