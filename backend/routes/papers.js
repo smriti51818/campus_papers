@@ -1,29 +1,15 @@
 import express from 'express'
 import multer from 'multer'
-import axios from 'axios'
 import { protect, requireRole, optionalProtect } from '../middleware/auth.js'
 import { checkOwnership } from '../middleware/ownership.js'
 import { uploadToCloudinary } from '../utils/cloudinaryUpload.js'
 import { checkAndAwardBadges } from '../utils/badges.js'
 import { extractPdfTextFromBuffer, computeAuthenticityLocal } from '../utils/authenticityLocal.js'
+import { checkAuthenticityWithGemini } from '../utils/geminiCheck.js'
 import Paper from '../models/Paper.js'
 
 const router = express.Router()
 
-/** Normalize Python/axios JSON (camelCase or snake_case). */
-function normalizeAiCheckPayload(data) {
-  if (!data || typeof data !== 'object') return null
-  const raw = data.authenticityScore ?? data.authenticity_score
-  if (raw === undefined || raw === null) return null
-  const authenticityScore = Number(raw)
-  if (Number.isNaN(authenticityScore)) return null
-  return {
-    isAuthentic: data.isAuthentic ?? data.is_authentic ?? true,
-    authenticityScore: Math.max(0, Math.min(100, Math.round(authenticityScore))),
-    aiFeedback: String(data.aiFeedback ?? data.ai_feedback ?? '').trim() || 'AI check completed',
-    extractedText: data.extractedText ?? data.extracted_text ?? ''
-  }
-}
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } })
 
 router.get('/papers', optionalProtect, async (req, res) => {
@@ -131,52 +117,34 @@ router.post('/papers/upload', protect, upload.single('file'), async (req, res) =
       })
     }
 
-    const allPapers = await Paper.find({}).select('extractedText')
-    const existingTexts = allPapers.map((p) => p.extractedText).filter((t) => t)
+    // Extract text first — needed for both Gemini and local fallback
+    const extractedText = await extractPdfTextFromBuffer(req.file.buffer)
 
     let aiResult = null
 
-    if (process.env.AI_SERVICE_URL) {
-      try {
-        const payload = {
-          metadata: {
-            department,
-            subject,
-            year: Number(year),
-            semester: semester != null ? String(semester) : '',
-            university: university || undefined
-          },
-          file_url: result.secure_url,
-          existing_texts: existingTexts
-        }
-
-        console.log(`Calling AI Service at: ${process.env.AI_SERVICE_URL}/check`)
-        const aiResponse = await axios.post(`${process.env.AI_SERVICE_URL}/check`, payload, {
-          timeout: 120000
-        })
-        aiResult = normalizeAiCheckPayload(aiResponse.data)
-        if (aiResult) {
-          console.log('AI check completed successfully, score:', aiResult.authenticityScore)
-        } else {
-          console.warn('AI service returned an unexpected payload; using local scoring fallback')
-        }
-      } catch (aiError) {
-        const detail = aiError.response?.data
-        console.error('AI service error:', aiError.message, detail ? JSON.stringify(detail) : '')
-        aiResult = null
+    if (process.env.GEMINI_API_KEY) {
+      console.log('Running Gemini authenticity check...')
+      aiResult = await checkAuthenticityWithGemini(extractedText, {
+        department,
+        subject,
+        year: Number(year),
+        semester: String(semester),
+        university: university || undefined
+      })
+      if (aiResult) {
+        console.log('Gemini check completed, score:', aiResult.authenticityScore)
+      } else {
+        console.warn('Gemini check failed; falling back to local scoring')
       }
     } else {
-      console.log('AI_SERVICE_URL not set; using local PDF authenticity scoring')
+      console.log('GEMINI_API_KEY not set; using local PDF authenticity scoring')
     }
 
     if (!aiResult) {
-      const extracted = await extractPdfTextFromBuffer(req.file.buffer)
-      aiResult = computeAuthenticityLocal(extracted, existingTexts)
-      if (!process.env.AI_SERVICE_URL) {
-        aiResult.aiFeedback = `${aiResult.aiFeedback} (local scoring; set AI_SERVICE_URL for Python service)`
-      } else {
-        aiResult.aiFeedback = `${aiResult.aiFeedback} (fallback after AI service error)`
-      }
+      const allPapers = await Paper.find({}).select('extractedText')
+      const existingTexts = allPapers.map((p) => p.extractedText).filter((t) => t)
+      aiResult = computeAuthenticityLocal(extractedText, existingTexts)
+      aiResult.aiFeedback = `${aiResult.aiFeedback} (local scoring; set GEMINI_API_KEY for AI check)`
     }
 
     // Create paper document

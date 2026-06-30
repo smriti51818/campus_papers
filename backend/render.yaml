@@ -19,7 +19,7 @@ services:
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
-      - key: AI_SERVICE_URL
+      - key: GEMINI_API_KEY
         sync: false
       - key: CLIENT_URL
         sync: false
